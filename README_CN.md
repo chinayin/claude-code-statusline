@@ -51,6 +51,22 @@ cd claude-code-statusline && bash install.sh
 { "statusLine": { "type": "command", "command": "~/.claude/statusline.sh" } }
 ```
 
+### Windows
+
+Windows 上 Claude Code 通过 **Git Bash**（Git for Windows 自带）运行 statusline 脚本，因此同一脚本原样可用。先在 PowerShell 中装好依赖：
+
+```powershell
+winget install Git.Git jqlang.jq
+```
+
+然后打开 **Git Bash**，执行同一条一行安装命令：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/master/install.sh | bash
+```
+
+说明：安装器写入的 `~/.claude/statusline.sh` 路径使用正斜杠（反斜杠在 Git Bash 中会被当转义吃掉）；Windows Terminal 下想要可点击链接，可用 `FORCE_HYPERLINK=1 claude` 启动。
+
 ## 配置
 
 在 shell profile 中 export 环境变量（重启 Claude Code 生效）：

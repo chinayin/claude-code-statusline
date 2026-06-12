@@ -51,6 +51,22 @@ Manual install: copy `statusline.sh` to `~/.claude/`, `chmod +x` it, then add to
 { "statusLine": { "type": "command", "command": "~/.claude/statusline.sh" } }
 ```
 
+### Windows
+
+On Windows, Claude Code runs status line scripts through **Git Bash** (bundled with Git for Windows), so the same script works as-is. In PowerShell, install the dependencies once:
+
+```powershell
+winget install Git.Git jqlang.jq
+```
+
+Then open **Git Bash** and run the same one-liner:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/master/install.sh | bash
+```
+
+Notes: the installer writes the `~/.claude/statusline.sh` path with forward slashes (backslashes break in Git Bash); for clickable links in Windows Terminal you may need to launch with `FORCE_HYPERLINK=1 claude`.
+
 ## Configuration
 
 Export environment variables in your shell profile (takes effect after restarting Claude Code):
