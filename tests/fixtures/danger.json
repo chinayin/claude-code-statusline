@@ -1,0 +1,1 @@
+{"session_id":"fix-danger","model":{"display_name":"Fable 5"},"workspace":{"current_dir":"/tmp"},"cost":{"total_cost_usd":123.9,"total_duration_ms":99000},"context_window":{"used_percentage":92.7,"total_input_tokens":185400,"context_window_size":200000},"effort":{"level":"max"},"rate_limits":{"five_hour":{"used_percentage":88.0,"resets_at":9999999999}}}
