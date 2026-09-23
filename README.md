@@ -34,8 +34,18 @@ Requires `jq` and `git` (macOS: `brew install jq`)
 One-liner:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/main/install.sh | bash
 ```
+
+Mirror (jsDelivr CDN, for networks where `raw.githubusercontent.com` is unreachable):
+
+```bash
+curl -fsSL https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline/install.sh | bash -s -- --mirror
+```
+
+To download from your own source instead, set `CCSL_REPO_RAW_URL` to its base URL. It cannot be combined with `--mirror`; the installer exits with an error rather than silently picking one. Run `install.sh --help` for all options.
+
+Behind a proxy instead, `export https_proxy=http://127.0.0.1:7890` first and use the one-liner above; the export makes the second download inside install.sh go through the proxy too, which `curl -x` would not.
 
 Or clone and install:
 
@@ -63,7 +73,7 @@ winget install Git.Git jqlang.jq
 Then open **Git Bash** and run the same one-liner:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/main/install.sh | bash
 ```
 
 Notes: the installer writes the `~/.claude/statusline.sh` path with forward slashes (backslashes break in Git Bash); for clickable links in Windows Terminal you may need to launch with `FORCE_HYPERLINK=1 claude`.

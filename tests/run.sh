@@ -71,6 +71,7 @@ ov_raw() {  # 参数为额外的环境变量赋值（后者覆盖前者）；输
 }
 ov_run() { ov_raw "$@" | sed $'s/\033\\[[0-9;]*m//g'; }
 has()   { case "$1" in *"$2"*) pass "$3" ;; *) fail "$3 (got: $1)" ;; esac; }
+eq()    { if [ "$1" = "$2" ]; then pass "$3"; else fail "$3 (got: $1)"; fi; }
 lacks() { case "$1" in *"$2"*) fail "$3 (got: $1)" ;; *) pass "$3" ;; esac; }
 
 ov_state "$R_OK" "$C_OK"
@@ -111,6 +112,39 @@ if ! printf '%s' "$OUT" | grep -q $'\033]0;' && [[ "$OUT" != *pwn* ]] && [[ "$OU
 else
   fail "敌意快照不注入、不串位 (got: $OUT)"
 fi
+
+echo "== install.sh 参数 =="
+# 用假 curl 记录下载地址并拷贝本地 statusline.sh，全程不联网；临时 HOME 不碰真实配置。
+# 以 stdin 方式运行（模拟 curl | bash），使脚本走远端下载分支而非同目录拷贝。
+FAKEBIN=$(mktemp -d)
+cat > "$FAKEBIN/curl" <<'FAKE'
+#!/bin/bash
+out=""; url=""
+while [ $# -gt 0 ]; do
+  case "$1" in -o) out="$2"; shift 2 ;; -*) shift ;; *) url="$1"; shift ;; esac
+done
+printf '%s\n' "$url" >> "$FAKE_CURL_LOG"
+cp "$FAKE_SRC" "$out"
+FAKE
+chmod +x "$FAKEBIN/curl"
+inst() {  # 参数原样传给 install.sh；INST_RAW 模拟用户设置的 CCSL_REPO_RAW_URL；输出 "退出码|请求过的下载地址"
+  local log; log=$(mktemp)
+  env HOME="$(mktemp -d)" PATH="$FAKEBIN:$PATH" FAKE_CURL_LOG="$log" \
+    FAKE_SRC="$PWD/$SCRIPT" CCSL_REPO_RAW_URL="${INST_RAW:-}" bash -s -- "$@" < ../install.sh >/dev/null 2>&1
+  printf '%s|%s' "$?" "$(cat "$log")"
+}
+R=$(inst)
+eq "$R" "0|https://raw.githubusercontent.com/chinayin/claude-code-statusline/main/statusline.sh" "默认从 GitHub raw 下载"
+R=$(inst --mirror)
+eq "$R" "0|https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline/statusline.sh" "--mirror 从 jsDelivr 下载"
+R=$(INST_RAW=https://example.test/ccsl inst)
+eq "$R" "0|https://example.test/ccsl/statusline.sh" "CCSL_REPO_RAW_URL 自定义源生效"
+R=$(INST_RAW=https://example.test/ccsl inst --mirror)
+eq "$R" "1|" "--mirror 与 CCSL_REPO_RAW_URL 冲突时报错且不下载"
+R=$(inst --bogus)
+eq "$R" "1|" "未知参数退出码 1 且不下载"
+R=$(inst --help)
+eq "$R" "0|" "--help 退出码 0 且不下载"
 
 echo "== 性能 =="
 perf() {  # $1: OV 快照目录；跑 20 次取平均

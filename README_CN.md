@@ -34,8 +34,18 @@ Fable 5 · ⚡high ∴ · ~/github/chinayin/claude-statusline · (master ✚2 �
 一行安装：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/main/install.sh | bash
 ```
+
+镜像安装（jsDelivr CDN，适用于访问不了 `raw.githubusercontent.com` 的网络）：
+
+```bash
+curl -fsSL https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline/install.sh | bash -s -- --mirror
+```
+
+想从自己的源下载，把 `CCSL_REPO_RAW_URL` 设为源的基础地址即可。它不能和 `--mirror` 同时使用，两者同时出现时安装脚本会报错退出，不会悄悄选一个。全部参数见 `install.sh --help`。
+
+如果有代理，先执行 `export https_proxy=http://127.0.0.1:7890` 再用上面的一行安装命令即可。用 export 才能让 install.sh 内部的第二次下载也走代理，`curl -x` 做不到。
 
 或克隆安装：
 
@@ -63,7 +73,7 @@ winget install Git.Git jqlang.jq
 然后打开 **Git Bash**，执行同一条一行安装命令：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/main/install.sh | bash
 ```
 
 说明：安装器写入的 `~/.claude/statusline.sh` 路径使用正斜杠（反斜杠在 Git Bash 中会被当转义吃掉）；Windows Terminal 下想要可点击链接，可用 `FORCE_HYPERLINK=1 claude` 启动。
