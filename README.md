@@ -40,8 +40,6 @@ curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/mai
 Mirror (jsDelivr CDN, for networks where `raw.githubusercontent.com` is unreachable):
 
 ```bash
-# No version in the URL: jsDelivr serves the latest release tag (vX.Y.Z), cached up to 12h.
-# --mirror makes install.sh download statusline.sh from the same mirror as well.
 curl -fsSL https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline/install.sh | bash -s -- --mirror
 ```
 

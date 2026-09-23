@@ -40,8 +40,6 @@ curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/mai
 镜像安装（jsDelivr CDN，适用于访问不了 `raw.githubusercontent.com` 的网络）：
 
 ```bash
-# URL 不带版本号：jsDelivr 返回最新发布的标签版本（vX.Y.Z），CDN 最多缓存 12 小时。
-# --mirror 让 install.sh 内部下载 statusline.sh 时也走同一镜像。
 curl -fsSL https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline/install.sh | bash -s -- --mirror
 ```
 
