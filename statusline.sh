@@ -4,7 +4,7 @@
 # Version: 1.0.0
 #
 # 第 1 行: 模型 · effort · 目录全路径(紫色,可点击) · (git分支/状态) · PR · 增删行数
-# 第 2 行: 上下文进度条 · token 数 · 成本 · ⏱时长 · 5h/7d 订阅限额
+# 第 2 行: 上下文进度条 · token 数 · 成本 · ⏱时长 · 5h/7d 订阅限额 · OV 记忆状态
 #
 # 依赖: jq (macOS: brew install jq / Ubuntu: sudo apt install jq)
 # 数据全部来自 Claude Code 通过 stdin 传入的 JSON。
@@ -19,16 +19,37 @@
 : "${CCSL_SHOW_PR:=1}"           # 显示当前分支的 PR（可点击）
 : "${CCSL_SHOW_LINES:=1}"        # 显示本次会话代码增删行数
 : "${CCSL_CACHE_DIR:=$HOME/.claude/cache/statusline}"  # 缓存目录（用户私有，避免共享 /tmp 被篡改）
+: "${CCSL_SHOW_OV:=1}"           # 显示 OpenViking 记忆插件状态（未安装时自动隐藏；0 关闭）
+: "${CCSL_OV_STATE_DIR:=${OPENVIKING_HOME:-$HOME/.openviking}/state}"  # OV hook 写快照的目录
 
 input=$(cat)
+
+# ===== OpenViking 模块（1/2）：数据接入 =====
+# 只读 OV 插件 hook 写在本地的两份 JSON 快照（零网络）；经 --slurpfile 并入下方唯一一次
+# jq 调用，不新增进程。对主流程只暴露一个不透明字段 OV_RAW（内部用 \u001e 分隔），
+# 字段拆解与渲染全部在模块 2/2。快照过期（30 分钟）或 session 不匹配时视为缺失。
+OV_RECALL_FILE=/dev/null; OV_CAPTURE_FILE=/dev/null
+if [ "$CCSL_SHOW_OV" = "1" ]; then
+  [ -r "${CCSL_OV_STATE_DIR}/last-recall.json" ] && OV_RECALL_FILE="${CCSL_OV_STATE_DIR}/last-recall.json"
+  [ -r "${CCSL_OV_STATE_DIR}/last-capture.json" ] && OV_CAPTURE_FILE="${CCSL_OV_STATE_DIR}/last-capture.json"
+fi
+# shellcheck disable=SC2016  # $ovr/$ovc/$now 是 jq 变量，不应被 shell 展开
+OV_JQ_DEF='def ov:
+  (.session_id // "") as $sid | (now * 1000) as $now
+  | def pick($x): ($x[0] // null)
+      | if type == "object" and (.ts | type) == "number" and ($now - .ts) < 1800000
+           and .cc_session_id == $sid then . else {} end;
+  pick($ovr) as $r | pick($ovc) as $c
+  | [$r.reason, $r.count, $r.latency_ms, $c.pending_tokens, $c.commit_threshold,
+     $c.commit_count, $c.committed, $c.turns_failed]
+  | map(. // "" | tostring | explode | map(select(. > 31 and . != 127)) | implode)
+  | join("\u001e");'
 
 # ===== 一次 jq 调用解析全部字段 =====
 # 分隔符用 \u001f（单元分隔符）：tab 属于空白字符，bash read 会折叠连续 tab 导致空字段错位。
 # DIR_URI 在 jq 里按路径段做 @uri 编码，保证 file:// 链接对特殊字符安全。
-IFS=$'\x1f' read -r MODEL DIR DIR_URI PCT CTX_USED CTX_SIZE COST DURATION_MS \
-  LINES_ADD LINES_DEL EFFORT THINKING SESSION_ID WORKTREE \
-  PR_NUM PR_URL PR_STATE FIVE_H FIVE_H_RESET WEEK \
-  < <(jq -r '[
+parse_input() {  # $1/$2: OV recall/capture 快照（不可用时为 /dev/null）
+  jq -r --slurpfile ovr "$1" --slurpfile ovc "$2" "${OV_JQ_DEF}"'[
     (.model.display_name // "Claude"),
     (.workspace.current_dir // .cwd // ""),
     (.workspace.current_dir // .cwd // "" | split("/") | map(@uri) | join("/")),
@@ -48,8 +69,18 @@ IFS=$'\x1f' read -r MODEL DIR DIR_URI PCT CTX_USED CTX_SIZE COST DURATION_MS \
     (.pr.review_state // ""),
     (.rate_limits.five_hour.used_percentage // "-"),
     (.rate_limits.five_hour.resets_at // "-"),
-    (.rate_limits.seven_day.used_percentage // "-")
-  ] | map(tostring) | join("\u001f")' <<<"$input")
+    (.rate_limits.seven_day.used_percentage // "-"),
+    ov
+  ] | map(tostring) | join("\u001f")' <<<"$input"
+}
+JQ_OUT=$(parse_input "$OV_RECALL_FILE" "$OV_CAPTURE_FILE")
+# OV 快照损坏会让 jq 整体失败：此时丢弃 OV 重解析一次，保证主状态栏不受第三方文件影响
+if [ -z "$JQ_OUT" ] && [ "${OV_RECALL_FILE}${OV_CAPTURE_FILE}" != "/dev/null/dev/null" ]; then
+  JQ_OUT=$(parse_input /dev/null /dev/null)
+fi
+IFS=$'\x1f' read -r MODEL DIR DIR_URI PCT CTX_USED CTX_SIZE COST DURATION_MS \
+  LINES_ADD LINES_DEL EFFORT THINKING SESSION_ID WORKTREE \
+  PR_NUM PR_URL PR_STATE FIVE_H FIVE_H_RESET WEEK OV_RAW <<<"$JQ_OUT"
 
 # jq 解析失败时的兜底，保证脚本不会因空值报错
 MODEL=${MODEL:-Claude}; PCT=${PCT:-0}; COST=${COST:-0}
@@ -201,6 +232,57 @@ if [ "$CCSL_SHOW_RATE" = "1" ] && [ "$FIVE_H" != "-" ] && [ -n "$FIVE_H" ]; then
   fi
 fi
 
+# ===== OpenViking 模块（2/2）：渲染 =====
+# 格式: · OV✓ ↓6 180ms · ↑4.0k/20k 2arch——不加括号（第 2 行已有两组括号）、不加粗；
+# ↓ 记忆流入对话（召回）、↑ 对话写回记忆（捕获），两组之间一个 ·。
+# 全部用 printf -v 写全局变量，不开子 shell（性能）。
+ov_human() {  # $1: 目标变量名 $2: 整数；token 数缩写 950 / 4.0k / 20k
+  if   [ "$2" -lt 1000 ];  then printf -v "$1" '%s' "$2"
+  elif [ "$2" -lt 10000 ]; then printf -v "$1" '%d.%dk' $(($2 / 1000)) $(($2 % 1000 / 100))
+  else printf -v "$1" '%dk' $((($2 + 500) / 1000)); fi
+}
+ov_render() {  # $1: OV_RAW；结果写入全局 OV_SEG（无数据时为空）
+  local reason count lat pend thr arch committed failed v label rec="" cap="" p t
+  IFS=$'\x1e' read -r reason count lat pend thr arch committed failed <<<"$1"
+  # 数字字段整数白名单，非法值一律视为缺失；reason 只做匹配、从不输出
+  for v in count lat pend thr arch failed; do
+    [[ ${!v} =~ ^[0-9]+$ ]] || printf -v "$v" '%s' ""
+  done
+  # 健康标记：ok/no_results/filtered_out 均发生在 OV 服务器健康检查通过之后
+  case "$reason" in
+    ok|no_results|filtered_out) label="${GREEN}OV✓" ;;
+    offline)                    label="${RED}OV✗" ;;
+    *)                          label="${WHITE}OV" ;;
+  esac
+  # 召回组：本轮注入的记忆条数 + 往返耗时（≥1s 标黄提示慢）
+  if [ "$reason" = "ok" ] && [ "${count:-0}" -gt 0 ]; then
+    rec="${WHITE}↓${count}${RESET}"
+    if [ -n "$lat" ]; then
+      if [ "$lat" -ge 1000 ]; then t="$YELLOW"; else t="$GRAY"; fi
+      rec="${rec} ${t}${lat}ms${RESET}"
+    fi
+  fi
+  # 捕获组：刚归档 / 待归档进度 / 本会话归档次数 / 失败告警
+  if [ "$committed" = "true" ]; then
+    cap="${GREEN}↑committed${RESET}"
+  elif [ "${pend:-0}" -gt 0 ]; then
+    ov_human p "$pend"
+    cap="${WHITE}↑${p}${RESET}"
+    [ -n "$thr" ] && ov_human t "$thr" && cap="${cap}${GRAY}/${t}${RESET}"
+  fi
+  [ "${arch:-0}" -gt 0 ] && cap="${cap:+${cap} }${GRAY}${arch}arch${RESET}"
+  [ "${failed:-0}" -gt 0 ] && cap="${cap:+${cap} }${RED}✗${failed}dropped${RESET}"
+
+  OV_SEG=""
+  [ -z "$reason" ] && [ -z "$cap" ] && return
+  OV_SEG=" ${SEP} ${label}${RESET}"
+  [ -n "$rec" ] && OV_SEG="${OV_SEG} ${rec}"
+  [ -n "$rec" ] && [ -n "$cap" ] && OV_SEG="${OV_SEG} ${SEP}"
+  [ -n "$cap" ] && OV_SEG="${OV_SEG} ${cap}"
+}
+OV_SEG=""
+[ "$CCSL_SHOW_OV" = "1" ] && [ "$NARROW" = "0" ] && [ -n "$OV_RAW" ] && ov_render "$OV_RAW"
+
 # ===== 目录：全路径（$HOME 缩写为 ~），紫色（参考 Kiro），超长才从目录边界截断；
 #       OSC 8 超链接包裹，Cmd/Ctrl+点击在文件管理器打开（需 iTerm2/WezTerm/Kitty 等） =====
 DIR_SEG=""
@@ -216,4 +298,4 @@ fi
 
 # ===== 输出（printf '%b' 比 echo -e 跨 shell 更可靠，官方推荐） =====
 printf '%b\n' "${CYAN}${BOLD}${MODEL}${RESET}${EFFORT_SEG}${DIR_SEG}${GIT_SEG}${PR_SEG}${LINES_SEG}"
-printf '%b\n' "${BAR} ${BAR_COLOR}${BOLD}${PCT}%${RESET}${TOKENS_SEG} ${SEP} ${COST_COLOR}${COST_FMT}${RESET} ${SEP} ⏱ ${TIME_FMT}${RATE_SEG}"
+printf '%b\n' "${BAR} ${BAR_COLOR}${BOLD}${PCT}%${RESET}${TOKENS_SEG} ${SEP} ${COST_COLOR}${COST_FMT}${RESET} ${SEP} ⏱ ${TIME_FMT}${RATE_SEG}${OV_SEG}"
