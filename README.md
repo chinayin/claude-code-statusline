@@ -23,6 +23,7 @@ Fable 5 · ⚡high ∴ · ~/github/chinayin/claude-statusline · (master ✚2 �
 | Progress bar | Context window usage, <70% green / <90% yellow / ≥90% red, with token counts |
 | Cost | <$10 green / <$100 yellow / ≥$100 red |
 | 5h/7d limits | Pro/Max subscription limits + 5h window reset countdown (read straight from stdin, **zero API calls**) |
+| OpenViking | Optional memory-plugin status at the end of line 2, e.g. `OV✓ ↓6 180ms · ↑4.0k/20k 2arch`; appears only when the plugin is installed. See [OpenViking memory plugin](#openviking-memory-plugin-optional) |
 
 Colors use the bright ANSI palette 91–97 (clearly visible on dark themes, still driven by your terminal's color scheme, adapts to light themes). On narrow terminals (<100 columns) secondary info such as token counts and the countdown is hidden automatically, and the path truncation length follows `COLUMNS`.
 
@@ -80,6 +81,35 @@ Export environment variables in your shell profile (takes effect after restartin
 | `CCSL_SHOW_PR` | 1 | PR segment |
 | `CCSL_SHOW_LINES` | 1 | Lines added/removed |
 | `CCSL_CACHE_DIR` | `~/.claude/cache/statusline` | Cache directory |
+| `CCSL_SHOW_OV` | 1 | OpenViking segment (auto-hidden when the plugin is absent; `0` turns it off) |
+| `CCSL_OV_STATE_DIR` | `$OPENVIKING_HOME/state`, else `~/.openviking/state` | Where the OpenViking hooks write their state snapshots |
+
+## OpenViking memory plugin (optional)
+
+If you use the [OpenViking memory plugin](https://github.com/volcengine/OpenViking/tree/main/examples/claude-code-memory-plugin) for Claude Code, its status is appended to the end of line 2. Nothing to configure: the segment shows up by itself when the plugin is installed and stays hidden otherwise.
+
+```
+███████░░░ 78% (156k/200k) · $12.3 · ⏱ 1h30m · 5h:64%(↻1h48m) 7d:41% · OV✓ ↓6 180ms · ↑4.0k/20k 2arch
+```
+
+| Part | Meaning |
+|---|---|
+| `OV✓` / `OV✗` | OpenViking server healthy (green) / unreachable (red). Plain `OV` when this turn's recall was skipped before contacting the server, e.g. a very short prompt |
+| `↓6 180ms` | Memories flowing **into** the conversation: 6 memories were recalled and injected for your last prompt, taking 180ms. The latency turns yellow at 1s or more. Shown only when something was actually injected |
+| `↑4.0k/20k` | The conversation being written **back** to memory: 4.0k of the 20k tokens needed before the next archive. Resets to 0 after each archive |
+| `↑committed` | This turn just produced an archive |
+| `2arch` | Archives produced in this session so far |
+| `✗1dropped` | Red alert: capturing failed for 1 turn in the latest batch. Clears itself after the next successful capture |
+
+When the segment is shown: the plugin's state snapshots exist, are fresher than 30 minutes, belong to the current Claude Code session (other windows never leak in), and the terminal is at least 100 columns wide. This project only reads those two local JSON snapshots; it never contacts the OpenViking server and never reads the plugin's config or API key.
+
+To hide it, add this to your shell profile and restart Claude Code:
+
+```bash
+export CCSL_SHOW_OV=0   # CCSL = Claude Code StatusLine; SHOW_OV = show the OpenViking segment
+```
+
+With the switch off, the snapshot files are not read at all. If you moved OpenViking's home directory, point `CCSL_OV_STATE_DIR` at its `state` folder (it follows `OPENVIKING_HOME` automatically).
 
 ## Security design
 
@@ -87,6 +117,7 @@ Export environment variables in your shell profile (takes effect after restartin
 - **Terminal escape injection protection**: external strings such as directory, branch, and model names are stripped of backslashes and C0 control characters (output goes through `printf '%b'`; unsanitized data could inject ANSI/OSC sequences).
 - **PR link allowlist**: only `https://` URLs with safe characters are placed inside OSC 8 hyperlinks.
 - **Cache lives in a user-private directory** (`~/.claude/cache`, mode 700) instead of shared `/tmp`, avoiding symlink/tampering attacks on multi-user machines; writes go through a temp file + atomic `mv`; the session_id is allowlist-filtered before being used in a filename.
+- **OpenViking snapshots are treated as untrusted input**: only two local JSON files are read, never `ovcli.conf` or its API key. Numeric fields must be integers, the reason field is only matched against an allowlist and never printed, and a corrupt file is dropped without affecting the rest of the line.
 - **Git hardening**: `-c core.fsmonitor=false` prevents untrusted repos from executing arbitrary commands via git config; `--no-optional-locks` avoids contending with your own git operations for the index lock.
 - Runs in roughly 15–40ms (a single jq pass for all fields + 5-second git info cache), never blocking status line refreshes.
 
