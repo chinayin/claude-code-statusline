@@ -2,15 +2,63 @@
 # claude-code-statusline 安装脚本
 # 用法:
 #   一行安装:  curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/master/install.sh | bash
+#   镜像安装:  curl -fsSL https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline/install.sh | bash -s -- --mirror
 #   本地安装:  git clone git@github.com:chinayin/claude-code-statusline.git && cd claude-code-statusline && bash install.sh
+# 参数:
+#   --mirror   从 jsDelivr CDN 下载 statusline.sh（无版本地址 = 最新发布标签），适用于访问不了 raw.githubusercontent.com 的网络
+#   -h|--help  显示帮助
+# 下载源优先级（互斥，不做静默覆盖）:
+#   --mirror > CCSL_REPO_RAW_URL（自定义源）> 默认 GitHub raw；--mirror 与 CCSL_REPO_RAW_URL 同时出现时报错退出
+#   在仓库目录内运行时直接拷贝同目录的 statusline.sh，不下载，下载源设置不生效
+# 退出码: 0 成功 / 1 参数错误或安装失败
 set -euo pipefail
 
-REPO_RAW_URL="${CCSL_REPO_RAW_URL:-https://raw.githubusercontent.com/chinayin/claude-code-statusline/master}"
+DEFAULT_RAW_URL="https://raw.githubusercontent.com/chinayin/claude-code-statusline/master"
+MIRROR_URL="https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline"
 TARGET="$HOME/.claude/statusline.sh"
 SETTINGS="$HOME/.claude/settings.json"
 
 info()  { printf '\033[32m[ok]\033[0m %s\n' "$1"; }
 err()   { printf '\033[31m[error]\033[0m %s\n' "$1" >&2; exit 1; }
+# 帮助文本按团队 shell 规范用英文
+usage() {
+  cat <<'USAGE'
+Usage: install.sh [--mirror] [-h|--help]
+
+Install claude-code-statusline to ~/.claude/statusline.sh and enable it in settings.json.
+
+Options:
+  --mirror     Download statusline.sh from the jsDelivr CDN (latest release tag),
+               for networks where raw.githubusercontent.com is unreachable.
+               Cannot be combined with CCSL_REPO_RAW_URL.
+  -h, --help   Show this help and exit.
+
+Environment:
+  CCSL_REPO_RAW_URL   Custom base URL to download statusline.sh from.
+
+Piped install passes options after "bash -s --":
+  curl -fsSL https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline/install.sh | bash -s -- --mirror
+
+Exit codes: 0 success, 1 usage error or install failure.
+USAGE
+}
+
+# --- 0. 参数解析（curl | bash 场景用 bash -s -- --mirror 传参） ---
+USE_MIRROR=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --mirror)  USE_MIRROR=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *)         usage >&2; err "unknown option: ${1}" ;;
+  esac
+done
+# 决定下载源：两种显式指定互斥，避免用户以为用了自定义源、实际却走了镜像（或反之）
+if [ "$USE_MIRROR" = "1" ]; then
+  [ -n "${CCSL_REPO_RAW_URL:-}" ] && err "--mirror cannot be combined with CCSL_REPO_RAW_URL (${CCSL_REPO_RAW_URL}); unset one of them"
+  REPO_RAW_URL="$MIRROR_URL"
+else
+  REPO_RAW_URL="${CCSL_REPO_RAW_URL:-$DEFAULT_RAW_URL}"
+fi
 
 # --- 1. 依赖检查 ---
 command -v jq  >/dev/null 2>&1 || err "缺少 jq，请先安装: brew install jq (macOS) / sudo apt install jq (Ubuntu)"

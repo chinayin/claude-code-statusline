@@ -41,10 +41,11 @@ curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/mas
 
 ```bash
 # URL 不带版本号：jsDelivr 返回最新发布的标签版本（vX.Y.Z），CDN 最多缓存 12 小时。
-# CCSL_REPO_RAW_URL 让 install.sh 从同一镜像下载 statusline.sh。
-curl -fsSL https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline/install.sh \
-  | CCSL_REPO_RAW_URL=https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline bash
+# --mirror 让 install.sh 内部下载 statusline.sh 时也走同一镜像。
+curl -fsSL https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline/install.sh | bash -s -- --mirror
 ```
+
+想从自己的源下载，把 `CCSL_REPO_RAW_URL` 设为源的基础地址即可。它不能和 `--mirror` 同时使用，两者同时出现时安装脚本会报错退出，不会悄悄选一个。全部参数见 `install.sh --help`。
 
 如果有代理，先执行 `export https_proxy=http://127.0.0.1:7890` 再用上面的一行安装命令即可。用 export 才能让 install.sh 内部的第二次下载也走代理，`curl -x` 做不到。
 
