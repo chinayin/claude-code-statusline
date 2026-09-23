@@ -134,7 +134,7 @@ inst() {  # 参数原样传给 install.sh；INST_RAW 模拟用户设置的 CCSL_
   printf '%s|%s' "$?" "$(cat "$log")"
 }
 R=$(inst)
-eq "$R" "0|https://raw.githubusercontent.com/chinayin/claude-code-statusline/master/statusline.sh" "默认从 GitHub raw 下载"
+eq "$R" "0|https://raw.githubusercontent.com/chinayin/claude-code-statusline/main/statusline.sh" "默认从 GitHub raw 下载"
 R=$(inst --mirror)
 eq "$R" "0|https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline/statusline.sh" "--mirror 从 jsDelivr 下载"
 R=$(INST_RAW=https://example.test/ccsl inst)

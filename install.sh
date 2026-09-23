@@ -1,7 +1,7 @@
 #!/bin/bash
 # claude-code-statusline 安装脚本
 # 用法:
-#   一行安装:  curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/master/install.sh | bash
+#   一行安装:  curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/main/install.sh | bash
 #   镜像安装:  curl -fsSL https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline/install.sh | bash -s -- --mirror
 #   本地安装:  git clone git@github.com:chinayin/claude-code-statusline.git && cd claude-code-statusline && bash install.sh
 # 参数:
@@ -13,7 +13,7 @@
 # 退出码: 0 成功 / 1 参数错误或安装失败
 set -euo pipefail
 
-DEFAULT_RAW_URL="https://raw.githubusercontent.com/chinayin/claude-code-statusline/master"
+DEFAULT_RAW_URL="https://raw.githubusercontent.com/chinayin/claude-code-statusline/main"
 MIRROR_URL="https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline"
 TARGET="$HOME/.claude/statusline.sh"
 SETTINGS="$HOME/.claude/settings.json"

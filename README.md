@@ -34,7 +34,7 @@ Requires `jq` and `git` (macOS: `brew install jq`)
 One-liner:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/main/install.sh | bash
 ```
 
 Mirror (jsDelivr CDN, for networks where `raw.githubusercontent.com` is unreachable):
@@ -75,7 +75,7 @@ winget install Git.Git jqlang.jq
 Then open **Git Bash** and run the same one-liner:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/main/install.sh | bash
 ```
 
 Notes: the installer writes the `~/.claude/statusline.sh` path with forward slashes (backslashes break in Git Bash); for clickable links in Windows Terminal you may need to launch with `FORCE_HYPERLINK=1 claude`.
