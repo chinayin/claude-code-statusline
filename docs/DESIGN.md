@@ -54,7 +54,7 @@
 4. README.md（英文，默认）与 README_CN.md（中文）**同步更新**，两版内容保持对齐。
 5. 本机验证：`cp statusline.sh ~/.claude/statusline.sh`，下一次交互生效。
 6. 提交信息用 conventional commits（feat/fix/chore/docs），不带 AI 署名尾注。
-7. 发版：更新脚本头部 `Version:`，打 `vX.Y.Z` 标签推送。
+7. 发版：更新脚本头部 `Version:`，打 `vX.Y.Z` 标签推送。**README 的镜像安装走 jsDelivr 无版本地址，它解析到最新的语义化版本标签而不是 master**——只推 master 不打标签，镜像用户拿不到新版本。标签推送后可请求 `https://purge.jsdelivr.net/gh/chinayin/claude-code-statusline/install.sh` 与 `.../statusline.sh` 立即刷新 CDN 缓存（否则最多等 12 小时）。GitHub Release 不是必需的，jsDelivr 只认 git 标签。
 
 ## 测试速查
 

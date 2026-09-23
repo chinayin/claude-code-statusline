@@ -37,6 +37,17 @@ One-liner:
 curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/master/install.sh | bash
 ```
 
+Mirror (jsDelivr CDN, for networks where `raw.githubusercontent.com` is unreachable):
+
+```bash
+# No version in the URL: jsDelivr serves the latest release tag (vX.Y.Z), cached up to 12h.
+# CCSL_REPO_RAW_URL makes install.sh fetch statusline.sh from the same mirror.
+curl -fsSL https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline/install.sh \
+  | CCSL_REPO_RAW_URL=https://cdn.jsdelivr.net/gh/chinayin/claude-code-statusline bash
+```
+
+Behind a proxy instead, `export https_proxy=http://127.0.0.1:7890` first and use the one-liner above; the export makes the second download inside install.sh go through the proxy too, which `curl -x` would not.
+
 Or clone and install:
 
 ```bash
