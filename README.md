@@ -7,7 +7,7 @@ A two-line status line for Claude Code: model / effort / context / git / PR / co
 Layout inspired by [Kiro](https://kiro.dev)'s status bar: `·` separators, purple full path, white parenthesized branch, no decorative emojis.
 
 ```
-Fable 5 · ⚡high ∴ · ~/github/chinayin/claude-statusline · (master ✚2 ●3) · ✓PR#1234 +156/-23
+Fable 5 ↯ · high ∴ · ~/github/chinayin/claude-statusline · (master ✚2 ●3) · ✓PR#1234 +156/-23
 ███████░░░ 78% (156k/200k) · $12.3 · ⏱ 1h30m · 5h:64%(↻1h48m) 7d:41%(↻3d4h)
 ```
 
@@ -15,10 +15,10 @@ Fable 5 · ⚡high ∴ · ~/github/chinayin/claude-statusline · (master ✚2 �
 
 | Segment | Description |
 |---|---|
-| Model + effort | Model in bold bright cyan; `⚡` + reasoning effort, bold and color-coded (high yellow / xhigh·max red / medium green); bright white `∴` when extended thinking is on |
+| Model + fast + effort | Model in bold bright cyan; bright yellow `↯` when fast mode is on (same symbol as Claude Code itself); reasoning effort in bold, color-coded (high yellow / xhigh·max red / medium green); bright white `∴` when extended thinking is on |
 | Full directory path | Purple, `$HOME` abbreviated to `~`, truncated at a directory boundary (`…/`) only when longer than half the terminal width; **clickable** (OSC 8, Cmd+click opens in Finder) |
 | (git branch) | Bright white parenthesized style `(master)`, short commit on detached HEAD; worktree marker / ✚staged ●modified …untracked |
-| PR | Open PR for the current branch, **clickable**, ✓approved ✗changes requested ◌pending ○draft |
+| PR / MR | Open PR for the current branch, **clickable**, ✓approved ✗changes requested ◌pending ○draft; GitLab merge requests show as `MR!12`, where ✓ means mergeable |
 | +/- lines | Lines of code added/removed this session |
 | Progress bar | Context window usage, <70% green / <90% yellow / ≥90% red, with token counts |
 | Cost | <$10 green / <$100 yellow / ≥$100 red |

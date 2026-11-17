@@ -64,6 +64,17 @@ echo "== 会话时长 =="
 DUR=$(CCSL_CACHE_DIR=$(mktemp -d) bash "$SCRIPT" < fixtures/danger.json 2>/dev/null | sed $'s/\033\\[[0-9;]*m//g')
 case "$DUR" in *"⏱ 1m ·"*) pass "时长不足 1h 只显示分钟" ;; *) fail "时长不足 1h 只显示分钟 (got: $DUR)" ;; esac
 
+echo "== 模型 · fast · effort · PR/MR =="
+line1() { CCSL_CACHE_DIR=$(mktemp -d) bash "$SCRIPT" 2>/dev/null | head -1 | sed $'s/\033\\[[0-9;]*m//g; s/\033]8;;[^\a]*\a//g'; }
+L1=$(printf '{"model":{"display_name":"Opus 5.5"},"fast_mode":true,"effort":{"level":"high"},"thinking":{"enabled":true}}' | line1)
+case "$L1" in "Opus 5.5 ↯ · high ∴"*) pass "fast 显示 ↯，effort 不带 ⚡" ;; *) fail "fast 显示 ↯，effort 不带 ⚡ (got: $L1)" ;; esac
+L1=$(printf '{"model":{"display_name":"Opus 5.5"},"fast_mode":false,"effort":{"level":"high"}}' | line1)
+case "$L1" in "Opus 5.5 · high"*) pass "fast 关闭时不显示 ↯" ;; *) fail "fast 关闭时不显示 ↯ (got: $L1)" ;; esac
+L1=$(printf '{"pr":{"number":12,"url":"https://gitlab.com/g/p/-/merge_requests/12","review_state":"approved","kind":"mr"}}' | line1)
+case "$L1" in *"✓MR!12"*) pass "GitLab MR 显示为 MR!12" ;; *) fail "GitLab MR 显示为 MR!12 (got: $L1)" ;; esac
+L1=$(printf '{"pr":{"number":34,"url":"https://github.com/o/r/pull/34","review_state":"draft"}}' | line1)
+case "$L1" in *"○PR#34"*) pass "GitHub PR 仍显示 PR#34" ;; *) fail "GitHub PR 仍显示 PR#34 (got: $L1)" ;; esac
+
 echo "== 限额重置倒计时 =="
 # 7d 窗口：≥1 天显示 天+小时，<1 天与 5h 同格式；+30 秒余量避免跨秒边界
 rate_out() {  # $1: 7d resets_at 相对现在的秒数

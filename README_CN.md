@@ -7,7 +7,7 @@ Claude Code 双行状态栏：模型 / effort / 上下文 / git / PR / 成本 / 
 布局参考 [Kiro](https://kiro.dev) 的状态栏风格：`·` 分隔、紫色全路径、白色括号分支、无多余 emoji。
 
 ```
-Fable 5 · ⚡high ∴ · ~/github/chinayin/claude-statusline · (master ✚2 ●3) · ✓PR#1234 +156/-23
+Fable 5 ↯ · high ∴ · ~/github/chinayin/claude-statusline · (master ✚2 ●3) · ✓PR#1234 +156/-23
 ███████░░░ 78% (156k/200k) · $12.3 · ⏱ 1h30m · 5h:64%(↻1h48m) 7d:41%(↻3d4h)
 ```
 
@@ -15,10 +15,10 @@ Fable 5 · ⚡high ∴ · ~/github/chinayin/claude-statusline · (master ✚2 �
 
 | 段位 | 说明 |
 |---|---|
-| 模型 + effort | 模型亮青色加粗；`⚡`+推理档位加粗变色（high 黄 / xhigh·max 红 / medium 绿）；extended thinking 开启时显示亮白 `∴` |
+| 模型 + fast + effort | 模型亮青色加粗；fast 模式开启时显示亮黄 `↯`（与 Claude Code 官方符号一致）；推理档位加粗变色（high 黄 / xhigh·max 红 / medium 绿）；extended thinking 开启时显示亮白 `∴` |
 | 目录全路径 | 紫色，`$HOME` 缩写为 `~`，超过终端宽度一半才从目录边界截断为 `…/`；**可点击**（OSC 8，Cmd+点击在 Finder 打开） |
 | (git 分支) | 亮白色括号样式 `(master)`，detached HEAD 显示短 commit；worktree 标识 / ✚暂存 ●修改 …未跟踪 |
-| PR | 当前分支的 open PR，**可点击跳转**，✓已批准 ✗需修改 ◌待审 ○草稿 |
+| PR / MR | 当前分支的 open PR，**可点击跳转**，✓已批准 ✗需修改 ◌待审 ○草稿；GitLab 合并请求显示为 `MR!12`，✓ 表示可合并 |
 | +/-行数 | 本次会话代码增删 |
 | 进度条 | 上下文用量，<70% 绿 / <90% 黄 / ≥90% 红，附 token 数 |
 | 成本 | <$10 绿 / <$100 黄 / ≥$100 红 |

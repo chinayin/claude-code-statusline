@@ -3,7 +3,7 @@
 # claude-statusline — Claude Code 双行状态栏（布局参考 Kiro）
 # Version: 1.2.0
 #
-# 第 1 行: 模型 · effort · 目录全路径(紫色,可点击) · (git分支/状态) · PR · 增删行数
+# 第 1 行: 模型 ↯(fast) · effort · 目录全路径(紫色,可点击) · (git分支/状态) · PR/MR · 增删行数
 # 第 2 行: 上下文进度条 · token 数 · 成本 · ⏱时长 · 5h/7d 订阅限额 · OV 记忆状态
 #
 # 依赖: jq (macOS: brew install jq / Ubuntu: sudo apt install jq)
@@ -71,6 +71,8 @@ parse_input() {  # $1/$2: OV recall/capture 快照（不可用时为 /dev/null�
     (.rate_limits.five_hour.resets_at // "-"),
     (.rate_limits.seven_day.used_percentage // "-"),
     (.rate_limits.seven_day.resets_at // "-"),
+    (.fast_mode // false),
+    (.pr.kind // ""),
     ov
   ] | map(tostring) | join("\u001f")' <<<"$input"
 }
@@ -81,7 +83,7 @@ if [ -z "$JQ_OUT" ] && [ "${OV_RECALL_FILE}${OV_CAPTURE_FILE}" != "/dev/null/dev
 fi
 IFS=$'\x1f' read -r MODEL DIR DIR_URI PCT CTX_USED CTX_SIZE COST DURATION_MS \
   LINES_ADD LINES_DEL EFFORT THINKING SESSION_ID WORKTREE \
-  PR_NUM PR_URL PR_STATE FIVE_H FIVE_H_RESET WEEK WEEK_RESET OV_RAW <<<"$JQ_OUT"
+  PR_NUM PR_URL PR_STATE FIVE_H FIVE_H_RESET WEEK WEEK_RESET FAST PR_KIND OV_RAW <<<"$JQ_OUT"
 
 # jq 解析失败时的兜底，保证脚本不会因空值报错
 MODEL=${MODEL:-Claude}; PCT=${PCT:-0}; COST=${COST:-0}
@@ -149,7 +151,8 @@ if [ -n "$BRANCH" ]; then
   GIT_SEG="${GIT_SEG}${WHITE})${RESET}"
 fi
 
-# ===== PR（可点击跳转，仅当前分支有 open PR 时显示） =====
+# ===== PR / GitLab MR（可点击跳转，仅当前分支有 open PR/MR 时显示） =====
+# GitLab 仓库里 Claude Code 把 MR 填进同一个 pr 对象并标 kind=mr；MR 的 approved 表示可合并
 PR_SEG=""
 if [ "$CCSL_SHOW_PR" = "1" ] && [ -n "$PR_NUM" ]; then
   case "$PR_STATE" in
@@ -158,11 +161,12 @@ if [ "$CCSL_SHOW_PR" = "1" ] && [ -n "$PR_NUM" ]; then
     draft)             PR_ICON="${GRAY}○" ;;
     *)                 PR_ICON="${YELLOW}◌" ;;
   esac
+  if [ "$PR_KIND" = "mr" ]; then PR_LABEL="MR!${PR_NUM}"; else PR_LABEL="PR#${PR_NUM}"; fi
   # PR_URL 来自 Claude Code（gh 解析），仅作超链接目标；按白名单字符校验一道
   if [[ "$PR_URL" =~ ^https://[a-zA-Z0-9./_-]+$ ]]; then
-    PR_SEG=" ${SEP} \033]8;;${PR_URL}\a${PR_ICON}PR#${PR_NUM}${RESET}\033]8;;\a"
+    PR_SEG=" ${SEP} \033]8;;${PR_URL}\a${PR_ICON}${PR_LABEL}${RESET}\033]8;;\a"
   else
-    PR_SEG=" ${SEP} ${PR_ICON}PR#${PR_NUM}${RESET}"
+    PR_SEG=" ${SEP} ${PR_ICON}${PR_LABEL}${RESET}"
   fi
 fi
 
@@ -172,8 +176,12 @@ if [ "$CCSL_SHOW_LINES" = "1" ] && { [ "${LINES_ADD:-0}" -gt 0 ] || [ "${LINES_D
   LINES_SEG=" ${GREEN}+${LINES_ADD}${RESET}${GRAY}/${RESET}${RED}-${LINES_DEL}${RESET}"
 fi
 
-# ===== effort 档位 + thinking（effort.level 来自 stdin JSON，模型不支持时为空） =====
-# 加粗亮色（参考 Kiro 的 High 观感）；thinking 开启时显示亮白 ∴（表示深度思考中）
+# ===== fast 模式 + effort 档位 + thinking（均来自 stdin JSON，缺失时隐藏） =====
+# fast 是模型的 API 配置（同模型、更快更贵），沿用官方 ↯ 紧跟模型名，亮黄提示在多花钱；
+# effort 与官方一致只用文字，加粗变色（不用 ⚡：⚡ 像"快"，但 effort 越高越慢）；
+# thinking 开启时显示亮白 ∴（表示深度思考中）
+FAST_SEG=""
+[ "$FAST" = "true" ] && FAST_SEG=" ${YELLOW}↯${RESET}"
 EFFORT_SEG=""
 if [ -n "$EFFORT" ]; then
   case "$EFFORT" in
@@ -182,7 +190,7 @@ if [ -n "$EFFORT" ]; then
     low)       EFFORT_COLOR="$GRAY" ;;
     *)         EFFORT_COLOR="$GREEN" ;;
   esac
-  EFFORT_SEG=" ${SEP} ${BOLD}${EFFORT_COLOR}⚡${EFFORT}${RESET}"
+  EFFORT_SEG=" ${SEP} ${BOLD}${EFFORT_COLOR}${EFFORT}${RESET}"
 fi
 [ "$THINKING" = "true" ] && EFFORT_SEG="${EFFORT_SEG} ${WHITE}∴${RESET}"
 
@@ -299,5 +307,5 @@ if [ -n "$DIR" ]; then
 fi
 
 # ===== 输出（printf '%b' 比 echo -e 跨 shell 更可靠，官方推荐） =====
-printf '%b\n' "${CYAN}${BOLD}${MODEL}${RESET}${EFFORT_SEG}${DIR_SEG}${GIT_SEG}${PR_SEG}${LINES_SEG}"
+printf '%b\n' "${CYAN}${BOLD}${MODEL}${RESET}${FAST_SEG}${EFFORT_SEG}${DIR_SEG}${GIT_SEG}${PR_SEG}${LINES_SEG}"
 printf '%b\n' "${BAR} ${BAR_COLOR}${BOLD}${PCT}%${RESET}${TOKENS_SEG} ${SEP} ${COST_COLOR}${COST_FMT}${RESET} ${SEP} ⏱ ${TIME_FMT}${RATE_SEG}${OV_SEG}"
