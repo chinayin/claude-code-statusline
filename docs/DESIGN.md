@@ -28,6 +28,7 @@
 6. 可配置项一律 `CCSL_*` 环境变量 + 脚本顶部默认值（`: "${VAR:=default}"`）。
 7. 窄终端（COLUMNS < 100）自动隐藏次要信息；路径截断阈值随 COLUMNS 自适应。
 8. 数据来源是 Claude Code 经 stdin 传入的 JSON，字段清单见[官方 statusline 文档](https://code.claude.com/docs/en/statusline#available-data)。
+9. 时间类显示只精确到分钟（⏱ 时长、↻ 倒计时），与安装时写入的 `refreshInterval: 60` 配套：Claude Code 默认只在新消息等事件时重跑脚本，空闲时时间会停住；秒级精度没有信息量，还会诱导更高频刷新。
 
 ## 安全红线（不可妥协）
 

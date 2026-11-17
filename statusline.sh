@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================================
 # claude-statusline — Claude Code 双行状态栏（布局参考 Kiro）
-# Version: 1.1.1
+# Version: 1.2.0
 #
 # 第 1 行: 模型 · effort · 目录全路径(紫色,可点击) · (git分支/状态) · PR · 增删行数
 # 第 2 行: 上下文进度条 · token 数 · 成本 · ⏱时长 · 5h/7d 订阅限额 · OV 记忆状态
@@ -70,6 +70,7 @@ parse_input() {  # $1/$2: OV recall/capture 快照（不可用时为 /dev/null�
     (.rate_limits.five_hour.used_percentage // "-"),
     (.rate_limits.five_hour.resets_at // "-"),
     (.rate_limits.seven_day.used_percentage // "-"),
+    (.rate_limits.seven_day.resets_at // "-"),
     ov
   ] | map(tostring) | join("\u001f")' <<<"$input"
 }
@@ -80,7 +81,7 @@ if [ -z "$JQ_OUT" ] && [ "${OV_RECALL_FILE}${OV_CAPTURE_FILE}" != "/dev/null/dev
 fi
 IFS=$'\x1f' read -r MODEL DIR DIR_URI PCT CTX_USED CTX_SIZE COST DURATION_MS \
   LINES_ADD LINES_DEL EFFORT THINKING SESSION_ID WORKTREE \
-  PR_NUM PR_URL PR_STATE FIVE_H FIVE_H_RESET WEEK OV_RAW <<<"$JQ_OUT"
+  PR_NUM PR_URL PR_STATE FIVE_H FIVE_H_RESET WEEK WEEK_RESET OV_RAW <<<"$JQ_OUT"
 
 # jq 解析失败时的兜底，保证脚本不会因空值报错
 MODEL=${MODEL:-Claude}; PCT=${PCT:-0}; COST=${COST:-0}
@@ -205,12 +206,10 @@ if   [ "$COST_INT" -ge 100 ]; then COST_FMT="\$${COST_INT}"; COST_COLOR="$RED"
 elif [ "$COST_INT" -ge 10 ];  then COST_FMT=$(printf '$%.1f' "$COST"); COST_COLOR="$YELLOW"
 else COST_FMT=$(printf '$%.2f' "$COST"); COST_COLOR="$GREEN"; fi
 
-# ===== 会话时长 =====
-TOTAL_SECS=$((DURATION_MS / 1000))
-HOURS=$((TOTAL_SECS / 3600)); MINS=$(((TOTAL_SECS % 3600) / 60)); SECS=$((TOTAL_SECS % 60))
-if   [ "$HOURS" -gt 0 ]; then TIME_FMT="${HOURS}h${MINS}m"
-elif [ "$MINS" -gt 0 ];  then TIME_FMT="${MINS}m${SECS}s"
-else TIME_FMT="${SECS}s"; fi
+# ===== 会话时长（精确到分钟，秒无信息量） =====
+TOTAL_MINS=$((DURATION_MS / 60000))
+HOURS=$((TOTAL_MINS / 60)); MINS=$((TOTAL_MINS % 60))
+if [ "$HOURS" -gt 0 ]; then TIME_FMT="${HOURS}h${MINS}m"; else TIME_FMT="${MINS}m"; fi
 
 # ===== 5h/7d 订阅限额（仅 Pro/Max 订阅、首次 API 响应后才有；API key 计费无此字段） =====
 rate_color() {  # $1: 0-100 的百分比
@@ -219,16 +218,19 @@ rate_color() {  # $1: 0-100 的百分比
   elif [ "$p" -ge 50 ]; then printf '%s' "$YELLOW"
   else printf '%s' "$GREEN"; fi
 }
+rate_reset() {  # $1: resets_at（epoch 秒）；未到期时把倒计时追加到 RATE_SEG（窄终端下省略）
+  [ "$NARROW" = "0" ] && [ "$1" != "-" ] && [ "$1" -gt "$NOW" ] 2>/dev/null || return 0
+  local r=$(($1 - NOW))
+  if [ "$r" -ge 86400 ]; then RATE_SEG="${RATE_SEG}${GRAY}(↻$((r / 86400))d$(((r % 86400) / 3600))h)${RESET}"
+  else RATE_SEG="${RATE_SEG}${GRAY}(↻$((r / 3600))h$(((r % 3600) / 60))m)${RESET}"; fi
+}
 RATE_SEG=""
 if [ "$CCSL_SHOW_RATE" = "1" ] && [ "$FIVE_H" != "-" ] && [ -n "$FIVE_H" ]; then
   RATE_SEG=" ${SEP} $(rate_color "$FIVE_H")5h:$(printf '%.0f' "$FIVE_H")%${RESET}"
-  # 距离 5 小时窗口重置的倒计时（窄终端下省略）
-  if [ "$NARROW" = "0" ] && [ "$FIVE_H_RESET" != "-" ] && [ "$FIVE_H_RESET" -gt "$NOW" ] 2>/dev/null; then
-    REM=$((FIVE_H_RESET - NOW))
-    RATE_SEG="${RATE_SEG}${GRAY}(↻$((REM / 3600))h$(((REM % 3600) / 60))m)${RESET}"
-  fi
+  rate_reset "$FIVE_H_RESET"
   if [ "$WEEK" != "-" ] && [ -n "$WEEK" ]; then
     RATE_SEG="${RATE_SEG} $(rate_color "$WEEK")7d:$(printf '%.0f' "$WEEK")%${RESET}"
+    rate_reset "$WEEK_RESET"
   fi
 fi
 

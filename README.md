@@ -8,7 +8,7 @@ Layout inspired by [Kiro](https://kiro.dev)'s status bar: `·` separators, purpl
 
 ```
 Fable 5 · ⚡high ∴ · ~/github/chinayin/claude-statusline · (master ✚2 ●3) · ✓PR#1234 +156/-23
-███████░░░ 78% (156k/200k) · $12.3 · ⏱ 1h30m · 5h:64%(↻1h48m) 7d:41%
+███████░░░ 78% (156k/200k) · $12.3 · ⏱ 1h30m · 5h:64%(↻1h48m) 7d:41%(↻3d4h)
 ```
 
 ## Features
@@ -22,7 +22,7 @@ Fable 5 · ⚡high ∴ · ~/github/chinayin/claude-statusline · (master ✚2 �
 | +/- lines | Lines of code added/removed this session |
 | Progress bar | Context window usage, <70% green / <90% yellow / ≥90% red, with token counts |
 | Cost | <$10 green / <$100 yellow / ≥$100 red |
-| 5h/7d limits | Pro/Max subscription limits + 5h window reset countdown (read straight from stdin, **zero API calls**) |
+| 5h/7d limits | Pro/Max subscription limits + 5h/7d window reset countdowns (read straight from stdin, **zero API calls**) |
 | OpenViking | Optional memory-plugin status at the end of line 2, e.g. `OV✓ ↓6 180ms · ↑4.0k/20k 2arch`; appears only when the plugin is installed. See [OpenViking memory plugin](#openviking-memory-plugin-optional) |
 
 Colors use the bright ANSI palette 91–97 (clearly visible on dark themes, still driven by your terminal's color scheme, adapts to light themes). On narrow terminals (<100 columns) secondary info such as token counts and the countdown is hidden automatically, and the path truncation length follows `COLUMNS`.
@@ -54,12 +54,12 @@ git clone git@github.com:chinayin/claude-code-statusline.git
 cd claude-code-statusline && bash install.sh
 ```
 
-The installer: checks dependencies → copies the script to `~/.claude/statusline.sh` → merges `settings.json` with jq (**after backing it up**, touching only the `statusLine` key) → runs a smoke test. No restart needed for running Claude Code sessions — the status line appears after your next interaction.
+The installer: checks dependencies → copies the script to `~/.claude/statusline.sh` → merges `settings.json` with jq (**after backing it up**, touching only the `statusLine` key) → runs a smoke test. No restart needed for running Claude Code sessions — the status line appears after your next interaction. `refreshInterval: 60` re-runs the script every minute so the duration and reset countdowns keep ticking while the session is idle (Claude Code otherwise refreshes only on events such as new messages).
 
 Manual install: copy `statusline.sh` to `~/.claude/`, `chmod +x` it, then add to `~/.claude/settings.json`:
 
 ```json
-{ "statusLine": { "type": "command", "command": "~/.claude/statusline.sh" } }
+{ "statusLine": { "type": "command", "command": "~/.claude/statusline.sh", "refreshInterval": 60 } }
 ```
 
 ### Windows
@@ -99,7 +99,7 @@ Export environment variables in your shell profile (takes effect after restartin
 If you use the [OpenViking memory plugin](https://github.com/volcengine/OpenViking/tree/main/examples/claude-code-memory-plugin) for Claude Code, its status is appended to the end of line 2. Nothing to configure: the segment shows up by itself when the plugin is installed and stays hidden otherwise.
 
 ```
-███████░░░ 78% (156k/200k) · $12.3 · ⏱ 1h30m · 5h:64%(↻1h48m) 7d:41% · OV✓ ↓6 180ms · ↑4.0k/20k 2arch
+███████░░░ 78% (156k/200k) · $12.3 · ⏱ 1h30m · 5h:64%(↻1h48m) 7d:41%(↻3d4h) · OV✓ ↓6 180ms · ↑4.0k/20k 2arch
 ```
 
 | Part | Meaning |

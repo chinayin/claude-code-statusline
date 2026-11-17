@@ -88,7 +88,7 @@ else
   echo '{}' > "$SETTINGS"
 fi
 TMP=$(mktemp)
-jq '.statusLine = {"type":"command","command":"~/.claude/statusline.sh"}' "$SETTINGS" > "$TMP" \
+jq '.statusLine = {"type":"command","command":"~/.claude/statusline.sh","refreshInterval":60}' "$SETTINGS" > "$TMP" \
   && mv "$TMP" "$SETTINGS"
 jq -e '.statusLine.command' "$SETTINGS" >/dev/null || err "settings.json 写入校验失败"
 info "已在 settings.json 中启用 statusLine"

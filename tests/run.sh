@@ -59,6 +59,24 @@ else
   fail "无裸 \$VAR 紧跟非 ASCII 字符（改用 \${VAR}）"
 fi
 
+echo "== 会话时长 =="
+# 99000ms = 1m39s：只显示到分钟，秒无信息量
+DUR=$(CCSL_CACHE_DIR=$(mktemp -d) bash "$SCRIPT" < fixtures/danger.json 2>/dev/null | sed $'s/\033\\[[0-9;]*m//g')
+case "$DUR" in *"⏱ 1m ·"*) pass "时长不足 1h 只显示分钟" ;; *) fail "时长不足 1h 只显示分钟 (got: $DUR)" ;; esac
+
+echo "== 限额重置倒计时 =="
+# 7d 窗口：≥1 天显示 天+小时，<1 天与 5h 同格式；+30 秒余量避免跨秒边界
+rate_out() {  # $1: 7d resets_at 相对现在的秒数
+  local now; now=$(date +%s)
+  printf '{"rate_limits":{"five_hour":{"used_percentage":10,"resets_at":%s},"seven_day":{"used_percentage":41,"resets_at":%s}}}' \
+    $((now + 3600 + 30)) $((now + $1 + 30)) \
+    | CCSL_CACHE_DIR=$(mktemp -d) COLUMNS=160 bash "$SCRIPT" 2>/dev/null | sed $'s/\033\\[[0-9;]*m//g'
+}
+R=$(rate_out $((3 * 86400 + 4 * 3600)))
+case "$R" in *"5h:10%(↻1h0m) 7d:41%(↻3d4h)"*) pass "7d 重置 ≥1 天显示 3d4h" ;; *) fail "7d 重置 ≥1 天显示 3d4h (got: $R)" ;; esac
+R=$(rate_out $((5 * 3600)))
+case "$R" in *"7d:41%(↻5h0m)"*) pass "7d 重置 <1 天显示 5h0m" ;; *) fail "7d 重置 <1 天显示 5h0m (got: $R)" ;; esac
+
 echo "== OpenViking 段 =="
 OVD=$(mktemp -d)
 TS=$(($(date +%s) * 1000)); OLD=$((TS - 31 * 60 * 1000))

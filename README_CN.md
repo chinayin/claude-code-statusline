@@ -8,7 +8,7 @@ Claude Code 双行状态栏：模型 / effort / 上下文 / git / PR / 成本 / 
 
 ```
 Fable 5 · ⚡high ∴ · ~/github/chinayin/claude-statusline · (master ✚2 ●3) · ✓PR#1234 +156/-23
-███████░░░ 78% (156k/200k) · $12.3 · ⏱ 1h30m · 5h:64%(↻1h48m) 7d:41%
+███████░░░ 78% (156k/200k) · $12.3 · ⏱ 1h30m · 5h:64%(↻1h48m) 7d:41%(↻3d4h)
 ```
 
 ## 特性
@@ -22,7 +22,7 @@ Fable 5 · ⚡high ∴ · ~/github/chinayin/claude-statusline · (master ✚2 �
 | +/-行数 | 本次会话代码增删 |
 | 进度条 | 上下文用量，<70% 绿 / <90% 黄 / ≥90% 红，附 token 数 |
 | 成本 | <$10 绿 / <$100 黄 / ≥$100 红 |
-| 5h/7d 限额 | Pro/Max 订阅限额 + 5h 窗口重置倒计时（直接读 stdin，**零 API 调用**） |
+| 5h/7d 限额 | Pro/Max 订阅限额 + 5h/7d 窗口重置倒计时（直接读 stdin，**零 API 调用**） |
 | OpenViking | 可选的记忆插件状态，位于第 2 行末尾，如 `OV✓ ↓6 180ms · ↑4.0k/20k 2arch`；仅安装插件后出现。详见 [OpenViking 记忆插件](#openviking-记忆插件可选) |
 
 配色使用 ANSI 亮色系 91–97（深色主题下足够亮，仍跟随终端调色板，浅色主题自适应）。窄终端（<100 列）自动隐藏 token 数、倒计时等次要信息，路径截断长度也随 `COLUMNS` 自适应。
@@ -54,12 +54,12 @@ git clone git@github.com:chinayin/claude-code-statusline.git
 cd claude-code-statusline && bash install.sh
 ```
 
-安装脚本会：检查依赖 → 复制脚本到 `~/.claude/statusline.sh` → **备份后**用 jq 合并 `settings.json`（只动 `statusLine` 键）→ 冒烟测试。正在运行的 Claude Code 会话无需重启，下一次交互后生效。
+安装脚本会：检查依赖 → 复制脚本到 `~/.claude/statusline.sh` → **备份后**用 jq 合并 `settings.json`（只动 `statusLine` 键）→ 冒烟测试。正在运行的 Claude Code 会话无需重启，下一次交互后生效。`refreshInterval: 60` 让脚本每分钟重跑一次，会话空闲时时长与重置倒计时也不会停住（Claude Code 默认只在新消息等事件时刷新）。
 
 手动安装：复制 `statusline.sh` 到 `~/.claude/` 并 `chmod +x`，然后在 `~/.claude/settings.json` 中加入：
 
 ```json
-{ "statusLine": { "type": "command", "command": "~/.claude/statusline.sh" } }
+{ "statusLine": { "type": "command", "command": "~/.claude/statusline.sh", "refreshInterval": 60 } }
 ```
 
 ### Windows
@@ -99,7 +99,7 @@ curl -fsSL https://raw.githubusercontent.com/chinayin/claude-code-statusline/mai
 如果你在 Claude Code 里使用 [OpenViking 记忆插件](https://github.com/volcengine/OpenViking/tree/main/examples/claude-code-memory-plugin)，它的运行状态会追加在第 2 行末尾。无需任何配置：装了插件就自动出现，没装就不显示。
 
 ```
-███████░░░ 78% (156k/200k) · $12.3 · ⏱ 1h30m · 5h:64%(↻1h48m) 7d:41% · OV✓ ↓6 180ms · ↑4.0k/20k 2arch
+███████░░░ 78% (156k/200k) · $12.3 · ⏱ 1h30m · 5h:64%(↻1h48m) 7d:41%(↻3d4h) · OV✓ ↓6 180ms · ↑4.0k/20k 2arch
 ```
 
 | 部分 | 含义 |
